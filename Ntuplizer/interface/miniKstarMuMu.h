@@ -45,7 +45,7 @@
 
 #include "Utils.h"
 #include "B0KstMuMuTreeContent.h"
-#include "miniB0KstarMuMu/miniKstarMuMu/interface/miniHLTObj.h"
+#include "Bs2MuMuGamma/Ntuplizer/interface/miniHLTObj.h"
 
 
 //

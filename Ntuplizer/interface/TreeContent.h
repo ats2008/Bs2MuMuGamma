@@ -5,8 +5,9 @@
 #include <string>
 #include "TTree.h"
 
-#include "miniB0KstarMuMu/miniKstarMuMu/interface/miniHLTObj.h"
-
+#include "Bs2MuMuGamma/Ntuplizer/interface/miniHLTObj.h"
+#include "DataFormats/MuonReco/interface/MuonPFIsolation.h"
+#include "DataFormats/MuonReco/interface/MuonIsolation.h"
 
 
 class TreeContent
@@ -72,16 +73,18 @@ class TreeContent
   // # reco::Muons #
   
   std::vector<double>   *muon_pt, *muon_eta, *muon_phi, *mum_dz, *muon_dxy;
-  std::vector<double>   *muon_pt_error, *muon_eta_error, *muon_phi_error, *mum_dz_error, *muon_dxy_error;
+  std::vector<double>   *mum_dz_error, *muon_dxy_error;
   std::vector<double>   *muon_vx,*muon_vy,*muon_vz,*muon_vertexChi2,*muon_vertexNDoF;
 
   std::vector<int>	*muon_charge;
-  std::vector<bool>	*muon_isGlobal,*muon_isTracker,*muon_StandAloneMuon,*isCaloMuon,*muon_isPFMuon;
+  std::vector<bool>	*muon_isGlobalMuon,*muon_isTrackerMuon,*muon_StandAloneMuon,*muon_isCaloMuon,*muon_isPFMuon;
   int 	            	*nMuons;
 
   std::vector<uint64_t> *muon_selector; 
   std::vector<bool>	*muon_isIsolationValid;
-  std::vector<reco::MuonIsolation> *muon_isolation03,*muon_isolation05;
+  std::vector<bool>	*muon_isPFIsolationValid;
+  std::vector<reco::MuonIsolation> *muon_isolationR03,*muon_isolationR05;
+  std::vector<reco::MuonPFIsolation> *muon_pfIsolationR03,*muon_pfIsolationR04;
   
   void ClearScalars ();
   void ClearScalarsMonteCarlo ();

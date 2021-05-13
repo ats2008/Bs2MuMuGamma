@@ -28,30 +28,6 @@ B0KstMuMuTreeContent::B0KstMuMuTreeContent ()
 
 
 
-  std::vector<double>   *muon_pt, *muon_eta, *muon_phi, *mum_dz, *muon_dxy;
-  std::vector<double>   *muon_pt_error, *muon_eta_error, *muon_phi_error, *mum_dz_error, *muon_dxy_error;
-  std::vector<double>   *muon_vx,*muon_vy,*muon_vz,*muon_vertexChi2,*muon_vertexNDoF;
-
-  std::vector<int>	*muon_charge;
-  std::vector<bool>	*muon_isGlobal,*muon_isTracker,*muon_StandAloneMuon,*isCaloMuon,*muon_isPFMuon;
-  int 	            	*nMuons;
-
-  std::vector<uint64_t> *muon_selector; 
-  std::vector<bool>	*muon_isIsolationValid;
-  std::vector<reco::MuonIsolation> *muon_isolation03,*muon_isolation05;
-  
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ### B0 Vtx ###
   bVtxCL        = nullptr;

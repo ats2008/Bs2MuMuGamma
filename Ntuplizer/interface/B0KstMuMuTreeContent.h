@@ -5,7 +5,7 @@
 #include <string>
 #include "TTree.h"
 
-#include "miniB0KstarMuMu/miniKstarMuMu/interface/miniHLTObj.h"
+#include "Bs2MuMuGamma/Ntuplizer/interface/miniHLTObj.h"
 
 
 
