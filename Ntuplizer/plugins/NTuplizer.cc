@@ -116,7 +116,7 @@ class NTuplizer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
       virtual void endJob() override;
 
-       TTree* theTree;
+      TTree* theTree;
       TreeContent* NTuple;
       Utils* Utility;
       //l1t::L1TGlobalUtil *fGtUtil;
@@ -136,6 +136,12 @@ class NTuplizer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
       edm::EDGetTokenT<reco::VertexCollection>         vtxToken_;
       edm::EDGetTokenT<std::vector<reco::Muon>>         muonToken_;
 
+
+
+     // Dimuon Reco vars
+         TrajectoryStateClosestToPoint theDCAXBS;
+	 ClosestApproachInRPhi ClosestApp;
+	 GlobalPoint XingPoint;
 
 };
 
@@ -169,7 +175,9 @@ NTuplizer::NTuplizer(const edm::ParameterSet& iConfig)
     //mcGenToken_        = consumes<reco::GenParticleCollection >(iConfig.getParameter<edm::InputTag>(""));
 
     pTMinMuons = 3.50;
- 
+    
+    NTuple = new TreeContent;
+    NTuple->Init();
 
 }
 
@@ -179,6 +187,10 @@ NTuplizer::~NTuplizer()
 
    // do anything here that needs to be done at desctruction time
    // (e.g. close files, deallocate resources etc.)
+  
+  //delete NTuple;
+  //delete Utility;
+
 
 }
 
@@ -194,11 +206,11 @@ NTuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
    using namespace edm;
  
      // Get magnetic field
-    edm::ESHandle<MagneticField> bFieldHandle;
-    iSetup.get<IdealMagneticFieldRecord>().get(bFieldHandle);      
+    //edm::ESHandle<MagneticField> bFieldHandle;
+    //iSetup.get<IdealMagneticFieldRecord>().get(bFieldHandle);      
     // Get BeamSpot
-    //edm::Handle<reco::BeamSpot> beamSpotH;
-    //iEvent.getByToken(beamSpotToken_, beamSpotH);
+    edm::Handle<reco::BeamSpot> beamSpotH;
+    iEvent.getByToken(beamSpotToken_, beamSpotH);
     //reco::BeamSpot beamSpot = *beamSpotH;
 
     edm::Handle<std::vector<reco::Muon>> muons;
@@ -208,17 +220,35 @@ NTuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     //  TODO : Add details to closest PV
     //         Add details with BS
     //
-    for (const reco::Muon &aMuon : *muons) 
+    int x=0;
+    reco::TrackRef aMuonInnerTrack;
+    for ( uint32_t i=0;i<muons->size();i++) 
     {
-        if(aMuon.pt()  < pTMinMuons) continue;
-         NTuple->muon_pt		      ->push_back(aMuon.pt());
+    	 auto &aMuon=muons->at(i);
+         
+         if(aMuon.pt()  < pTMinMuons) continue;
+	 aMuonInnerTrack= aMuon.innerTrack();
+         
+	 
+	 NTuple->muon_pt		      ->push_back(aMuon.pt());
          NTuple->muon_eta		      ->push_back(aMuon.eta());
          NTuple->muon_phi		      ->push_back(aMuon.phi());
-         NTuple->mum_dz		              ->push_back((aMuon.globalTrack())->dz());
-         NTuple->muon_dxy		      ->push_back((aMuon.globalTrack())->dxy());
-         NTuple->mum_dz_error	              ->push_back((aMuon.globalTrack())->dzError() );
-         NTuple->muon_dxy_error	              ->push_back((aMuon.globalTrack())->dxyError());
-         NTuple->muon_vx		      ->push_back(aMuon.vx() );
+	 if(not aMuonInnerTrack.isNull())
+	 {
+         	NTuple->mum_dz		              ->push_back(aMuonInnerTrack->dz());
+         	NTuple->muon_dxy		      ->push_back(aMuonInnerTrack->dxy());
+         	NTuple->mum_dz_error	              ->push_back(aMuonInnerTrack->dzError() );
+         	NTuple->muon_dxy_error	              ->push_back(aMuonInnerTrack->dxyError());
+         }
+	 else
+	 {
+	         NTuple->mum_dz		              ->push_back(1e5);
+	         NTuple->muon_dxy		      ->push_back(1e5);
+	         NTuple->mum_dz_error	              ->push_back(1e9);
+	         NTuple->muon_dxy_error	              ->push_back(1e9);
+	 }
+
+	 NTuple->muon_vx		      ->push_back(aMuon.vx() );
          NTuple->muon_vy		      ->push_back(aMuon.vy());
          NTuple->muon_vz		      ->push_back(aMuon.vz());
          NTuple->muon_vertexChi2	      ->push_back(aMuon.vertexChi2());
@@ -237,10 +267,160 @@ NTuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
          NTuple->muon_isPFIsolationValid  ->push_back(aMuon.isIsolationValid());
          NTuple->muon_pfIsolationR03       ->push_back(aMuon.pfIsolationR03());
          NTuple->muon_pfIsolationR04       ->push_back(aMuon.pfIsolationR04());
-         *(NTuple->nMuons)+=1; 
+	 *(NTuple->nMuons)+=1; 
+	 /*
+	 if ((aMuonInnerTrack.isNull() == true) || (aMuonInnerTrack->charge() != -1)) continue;
+
+	 const reco::TransientTrack muTrackpTT( aMuonInnerTrack, &(*bFieldHandle));
+  	 if (!muTrackmTT.isValid()) continue;
+	
+	 // # Compute mu- DCA to BeamSpot #
+	 theDCAXBS = muTrackmTT.trajectoryStateClosestToPoint(GlobalPoint(beamSpot.position().x(),beamSpot.position().y(),beamSpot.position().z()));
+	 if (theDCAXBS.isValid() == false)
+	 {
+	      if (printMsg) std::cout << __LINE__ << " : continue --> invalid absolute impact parameter 2D for mu-" << std::endl;
+	            continue;
+	 }
+
+        double DCAmumBS    = theDCAXBS.perigeeParameters().transverseImpactParameter();
+        double DCAmumBSErr = theDCAXBS.perigeeError().transverseImpactParameterError();
+        if (fabs(DCAmumBS) > DCAMUBS)
+        {
+          if (printMsg) std::cout << __LINE__ << " : continue --> bad absolute impact parameter 2D for mu- : " << DCAmumBS << std::endl;
+          continue;
+        }
+    	for ( uint32_t j=0;j<i;j++) 
+    	{
+    	 	auto &bMuon=muons->at(j);
+               
+  	       if(bMuon.pt()  < pTMinMuons) continue;
+	       
+	       bMuonInnerTrack = bMuon.innerTrack();
+	       
+               if ((bMuonInnerTrack.isNull() == true) || (bMuonInnerTrack->charge() != 1)) continue;
+	       
+		const reco::TransientTrack muTrackpTT(muTrackp, &(*bFieldHandle));
+                if (!muTrackpTT.isValid()) continue;
+	       
+	       // # Compute mu+ DCA to BeamSpot #
+               theDCAXBS = muTrackpTT.trajectoryStateClosestToPoint(GlobalPoint(beamSpot.position().x(),beamSpot.position().y(),beamSpot.position().z()));
+               if (theDCAXBS.isValid() == false)
+               {
+                 if (printMsg) std::cout << __LINE__ << " : continue --> invalid absolute impact parameter 2D for mu+" << std::endl;
+                 continue;
+               }
+               double DCAmupBS    = theDCAXBS.perigeeParameters().transverseImpactParameter();
+               double DCAmupBSErr = theDCAXBS.perigeeError().transverseImpactParameterError();
+               if (fabs(DCAmupBS) > DCAMUBS)
+               {
+                 if (printMsg) std::cout << __LINE__ << " : continue --> bad absolute impact parameter 2D for mu+: " << DCAmupBS << std::endl;
+                 continue;
+               }
+	     
+	    // # Check goodness of muons closest approach #
+               ClosestApp.calculate(muTrackpTT.initialFreeState(),muTrackmTT.initialFreeState());
+	       XingPoint = ClosestApp.crossingPoint();
+            if (  (sqrt(XingPoint.x()*XingPoint.x() + XingPoint.y()*XingPoint.y()) > TRKMAXR) || (fabs(XingPoint.z()) > TRKMAXZ) )
+             {
+              if (printMsg) std::cout << __LINE__ << " : continue --> closest approach crossing point outside the tracker volume" << std::endl;
+              continue ;
+             }
+	    double mumuDCA = ClosestApp.distance();
+            if (mumuDCA > DCAMUMU)
+            {
+              if (printMsg) std::cout << __LINE__ << " : continue --> bad 3D-DCA of mu+(-) with respect to mu-(+): " << mumuDCA << std::endl;
+              continue;
+            }
+            
+	    // # Cut on the dimuon inviariant mass and pT #
+            jpsi_lv.SetPxPyPzE( muTrackmTT.track().px() + muTrackpTT.track().px(), 
+                                muTrackmTT.track().py() + muTrackpTT.track().py(),
+                                muTrackmTT.track().pz() + muTrackpTT.track().pz(),
+                                sqrt( pow(muTrackmTT.track().p(),2) + pow(Utility->muonMass,2) ) + sqrt( pow(muTrackpTT.track().p(),2) + pow(Utility->muonMass,2) )
+                              );
+
+	    if ((jpsi_lv.Pt() < MINMUMUPT)  || (jpsi_lv.M() < MINMUMUINVMASS) || (jpsi_lv.M() > MAXMUMUINVMASS))
+            {
+              if (printMsg) std::cout << __LINE__ << " : continue --> no good mumu pair pT: " << jpsi_lv.Pt() << "\tinv. mass: " << jpsi_lv.M() << std::endl;
+              continue;
+            }
+
+  	    chi2 = 0.;
+            ndf  = 0.;
+            // ####################################################
+            // # Try to vertex the two muons to get dimuon vertex #
+            // ####################################################
+            std::vector<RefCountedKinematicParticle> muonParticles;
+            muonParticles.push_back(partFactory.particle(muTrackmTT, muonMass,chi,ndf, muonMassErr));
+            muonParticles.push_back(partFactory.particle(muTrackpTT, muonMass,chi,ndf, muonMassErr));
+        
+            RefCountedKinematicTree mumuVertexFitTree = PartVtxFitter.fit(muonParticles); 
+            
+	    if (mumuVertexFitTree->isValid() == false)
+            {
+              if (printMsg) std::cout << __LINE__ << " : continue --> invalid vertex from the mu+ mu- vertex fit" << std::endl;
+              continue; 
+            }
+        
+            mumuVertexFitTree->movePointerToTheTop();
+            RefCountedKinematicVertex mumu_KV   = mumuVertexFitTree->currentDecayVertex();
+            if (mumu_KV->vertexIsValid() == false)
+            {
+              if (printMsg) std::cout << __LINE__ << " : continue --> invalid vertex from the mu+ mu- vertex fit" << std::endl;
+              continue;
+            }
+            if (TMath::Prob(static_cast<double>(mumu_KV->chiSquared()), static_cast<int>(rint(mumu_KV->degreesOfFreedom()))) < CLMUMUVTX)
+            {
+              if (printMsg) std::cout << __LINE__ << " : continue --> bad vtx CL from mu+ mu- fit: " << TMath::Prob(static_cast<double>(mumu_KV->chiSquared()), static_cast<int>(rint(mumu_KV->degreesOfFreedom()))) << std::endl;
+              continue;
+            }
+
+            RefCountedKinematicParticle mumu_KP = mumuVertexFitTree->currentParticle();
+
+            // ######################################################
+            // # Compute the distance between mumu vtx and BeamSpot #
+            // ######################################################
+            
+            double MuMuLSBS;
+            double MuMuLSBSErr;
+            Utility->computeLS (mumu_KV->position().x(),mumu_KV->position().y(),0.0,
+                                beamSpot.position().x(),beamSpot.position().y(),0.0,
+                                mumu_KV->error().cxx(),mumu_KV->error().cyy(),0.0,
+                                mumu_KV->error().matrix()(0,1),0.0,0.0,
+                                beamSpot.covariance()(0,0),beamSpot.covariance()(1,1),0.0,
+                                beamSpot.covariance()(0,1),0.0,0.0,
+                                &MuMuLSBS,&MuMuLSBSErr);
+            if (MuMuLSBS/MuMuLSBSErr < LSMUMUBS)     
+            {
+              if (printMsg) std::cout << __LINE__ << " : continue --> bad mumu L/sigma with respect to BeamSpot: " << MuMuLSBS << "+/-" << MuMuLSBSErr << std::endl;
+              continue;
+            }
+            // ###################################################################
+            // # Compute cos(alpha) between mumu momentum and mumuVtx - BeamSpot #
+            // ###################################################################
+            double MuMuCosAlphaBS;
+            double MuMuCosAlphaBSErr;
+            Utility->computeCosAlpha (mumu_KP->currentState().globalMomentum().x(),mumu_KP->currentState().globalMomentum().y(),0.0,
+                                      mumu_KV->position().x() - beamSpot.position().x(),mumu_KV->position().y() - beamSpot.position().y(),0.0,
+                                      mumu_KP->currentState().kinematicParametersError().matrix()(3,3),mumu_KP->currentState().kinematicParametersError().matrix()(4,4),0.0,
+                                      mumu_KP->currentState().kinematicParametersError().matrix()(3,4),0.0,0.0,
+                                      mumu_KV->error().cxx() + beamSpot.covariance()(0,0),mumu_KV->error().cyy() + beamSpot.covariance()(1,1),0.0,
+                                      mumu_KV->error().matrix()(0,1) + beamSpot.covariance()(0,1),0.0,0.0,
+                                      &MuMuCosAlphaBS,&MuMuCosAlphaBSErr);
+            if (MuMuCosAlphaBS < COSALPHAMUMUBS)
+            {
+              if (printMsg) std::cout << __LINE__ << " : continue --> bad mumu cos(alpha) with respect to BeamSpot: " << MuMuCosAlphaBS << "+/-" << MuMuCosAlphaBSErr << std::endl;
+              continue;
+            }	     
+	 */
+
+
+	//}
+
+
+
    }
  
-
     theTree->Fill();
     NTuple->ClearNTuple();
 
@@ -260,9 +440,9 @@ NTuplizer::beginJob()
 void
 NTuplizer::endJob()
 {
-  
-  delete NTuple;
-  delete Utility;
+
+    theTree->GetDirectory()->cd();
+    theTree->Write();
 
 }
 

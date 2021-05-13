@@ -86,6 +86,22 @@ class TreeContent
   std::vector<reco::MuonIsolation> *muon_isolationR03,*muon_isolationR05;
   std::vector<reco::MuonPFIsolation> *muon_pfIsolationR03,*muon_pfIsolationR04;
   
+
+ // # Dimuon # // 
+  
+  std::vector<double>   *dimuon_pt, *dimuon_eta, *dimuon_phi, *dimuon_dz, *dimuon_dxy;
+  std::vector<double>   *dimuon_dz_error, *dimuon_dxy_error;
+  std::vector<double>   *dimuon_vx,*dimuon_vy,*dimuon_vz,*dimuon_vertexChi2,*dimuon_vertexNDoF;
+  std::vector<double>   *dimuon;
+  std::vector<int>	*dimuon_muPIdx,*dimuon_muMIdx;
+
+
+ 
+
+
+
+
+
   void ClearScalars ();
   void ClearScalarsMonteCarlo ();
   void ClearVectors ();
